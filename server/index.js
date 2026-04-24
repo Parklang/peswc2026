@@ -7,7 +7,8 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../public')));
+const publicPath = path.resolve(__dirname, '..', 'public');
+app.use(express.static(publicPath));
 
 // Init DB + seed
 const { seed } = require('./database');
@@ -22,7 +23,7 @@ app.use('/api/knockout',  require('./routes/knockout'));
 
 // SPA fallback
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
+  res.sendFile(path.join(publicPath, 'index.html'));
 });
 
 app.listen(PORT, () => {
