@@ -5,16 +5,27 @@ const { db, find, findOne, insert, update, remove } = require('../database');
 // Enrich match with team/venue info
 async function enrichMatch(m) {
   if (!m) return null;
-  const [ht, at, venue] = await Promise.all([
-    m.home_team_id ? findOne('teams', { _id: m.home_team_id }) : null,
-    m.away_team_id ? findOne('teams', { _id: m.away_team_id }) : null,
-    m.venue_id     ? findOne('venues', { _id: m.venue_id })    : null,
+  const homeId = m.home_team_id?.toString();
+  const awayId = m.away_team_id?.toString();
+  const venueId = m.venue_id?.toString();
+  const groupId = m.group_id?.toString();
+
+  const [ht, at, venue, group] = await Promise.all([
+    homeId ? findOne('teams', { _id: homeId }) : null,
+    awayId ? findOne('teams', { _id: awayId }) : null,
+    venueId ? findOne('venues', { _id: venueId }) : null,
+    groupId ? findOne('groups', { _id: groupId }) : null,
   ]);
-  const group = m.group_id ? await findOne('groups', { _id: m.group_id }) : null;
+
   return {
     ...m,
-    home_name: ht?.name, home_code: ht?.code, home_flag: ht?.flag,
-    away_name: at?.name, away_code: at?.code, away_flag: at?.flag,
+    id: m._id.toString(),
+    home_team_id: homeId,
+    away_team_id: awayId,
+    venue_id: venueId,
+    group_id: groupId,
+    home_name: ht?.name || '?', home_code: ht?.code || '???', home_flag: ht?.flag,
+    away_name: at?.name || '?', away_code: at?.code || '???', away_flag: at?.flag,
     group_name: group?.name,
     venue_name: venue?.name, venue_city: venue?.city
   };
@@ -32,7 +43,7 @@ router.get('/', async (req, res) => {
     let matches = await find('matches', q);
 
     if (date) matches = matches.filter(m => m.match_date && m.match_date.startsWith(date));
-    if (team_id) matches = matches.filter(m => m.home_team_id === team_id || m.away_team_id === team_id);
+    if (team_id) matches = matches.filter(m => m.home_team_id?.toString() === team_id || m.away_team_id?.toString() === team_id);
 
     matches.sort((a,b) => (a.match_date||'').localeCompare(b.match_date||''));
     const enriched = await Promise.all(matches.map(enrichMatch));
