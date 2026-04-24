@@ -1,0 +1,18 @@
+{
+  "name": "wc2026",
+  "version": "1.0.0",
+  "description": "World Cup 2026 Management System",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "nodemon server/index.js"
+  },
+  "dependencies": {
+    "@seald-io/nedb": "^4.1.2",
+    "cors": "^2.8.6",
+    "express": "^4.22.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
