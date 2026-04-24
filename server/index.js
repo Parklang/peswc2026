@@ -10,9 +10,8 @@ app.use(express.json());
 const publicPath = path.resolve(__dirname, '..', 'public');
 app.use(express.static(publicPath));
 
-// Init DB + seed
-const { seed } = require('./database');
-seed().catch(console.error);
+// Init DB
+require('./database');
 
 // Routes
 app.use('/api/groups',    require('./routes/groups'));

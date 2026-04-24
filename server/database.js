@@ -4,7 +4,10 @@ require('dotenv').config();
 const uri = process.env.MONGODB_URI;
 
 mongoose.connect(uri)
-  .then(() => console.log('✅ Connected to MongoDB Atlas'))
+  .then(async () => {
+    console.log('✅ Connected to MongoDB Atlas');
+    await seed().catch(console.error);
+  })
   .catch(err => console.error('❌ MongoDB Connection Error:', err));
 
 // Schemas
