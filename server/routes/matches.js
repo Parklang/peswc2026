@@ -85,19 +85,45 @@ router.put('/:id/result', async (req, res) => {
 
         let nextRound = null;
         let nextSlot = Math.ceil(m.bracket_slot / 2);
-        let side = m.bracket_slot % 2 === 1 ? 'home_team_id' : 'away_team_id';
-
         if (m.stage === 'r32') nextRound = 'r16';
         else if (m.stage === 'r16') nextRound = 'qf';
         else if (m.stage === 'qf') nextRound = 'sf';
-        else if (m.stage === 'sf') {
-          // Semi-final: Winner to Final, Loser to 3rd Place
-          await update('matches', { knockout_round: 'final', bracket_slot: 1 }, { $set: { [side]: winnerId } });
-          await update('matches', { knockout_round: 'third', bracket_slot: 1 }, { $set: { [side]: loserId } });
-        }
+        let side = m.bracket_slot % 2 === 1 ? 'home_team_id' : 'away_team_id';
 
         if (nextRound) {
-          await update('matches', { knockout_round: nextRound, bracket_slot: nextSlot }, { $set: { [side]: winnerId } });
+          let nextMatch = await findOne('matches', { knockout_round: nextRound, bracket_slot: nextSlot });
+          if (!nextMatch) {
+            // Create placeholder on the fly if missing (for legacy draws)
+            const venues = await find('venues');
+            const d = new Date(m.match_date || '2026-07-01');
+            d.setDate(d.getDate() + 4); // Suggest a date 4 days later
+            nextMatch = await insert('matches', {
+              home_team_id: null, away_team_id: null,
+              stage: nextRound, match_date: d.toISOString().split('T')[0], venue_id: venues[nextSlot % venues.length]?._id,
+              status: 'scheduled', knockout_round: nextRound, bracket_slot: nextSlot,
+              group_id: null, home_score: null, away_score: null, home_penalties: null, away_penalties: null
+            });
+          }
+          await update('matches', { _id: nextMatch._id }, { $set: { [side]: winnerId } });
+        }
+        
+        // Handle Final & Third Place similarly
+        if (m.stage === 'sf') {
+          for (const target of [{r:'final', id: winnerId}, {r:'third', id: loserId}]) {
+            let tm = await findOne('matches', { knockout_round: target.r, bracket_slot: 1 });
+            if (!tm) {
+              const venues = await find('venues');
+              const d = new Date(m.match_date || '2026-07-15');
+              d.setDate(d.getDate() + 4);
+              tm = await insert('matches', {
+                home_team_id: null, away_team_id: null,
+                stage: target.r, match_date: d.toISOString().split('T')[0], venue_id: venues[0]?._id,
+                status: 'scheduled', knockout_round: target.r, bracket_slot: 1,
+                group_id: null, home_score: null, away_score: null, home_penalties: null, away_penalties: null
+              });
+            }
+            await update('matches', { _id: tm._id }, { $set: { [side]: target.id } });
+          }
         }
       }
     }
