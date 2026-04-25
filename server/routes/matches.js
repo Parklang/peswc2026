@@ -72,7 +72,36 @@ router.get('/:id', async (req, res) => {
 router.put('/:id/result', async (req, res) => {
   try {
     const { home_score, away_score, home_penalties, away_penalties, status } = req.body;
-    await update('matches', { _id: req.params.id }, { $set: { home_score, away_score, home_penalties: home_penalties??null, away_penalties: away_penalties??null, status: status||'finished' } });
+    const finalStatus = status || 'finished';
+    await update('matches', { _id: req.params.id }, { $set: { home_score, away_score, home_penalties: home_penalties??null, away_penalties: away_penalties??null, status: finalStatus } });
+
+    // Handle advancement for knockout matches
+    if (finalStatus === 'finished') {
+      const m = await findOne('matches', { _id: req.params.id });
+      if (m && m.stage !== 'group') {
+        const homeWin = (m.home_score > m.away_score) || (m.home_penalties && m.home_penalties > m.away_penalties);
+        const winnerId = homeWin ? m.home_team_id : m.away_team_id;
+        const loserId = homeWin ? m.away_team_id : m.home_team_id;
+
+        let nextRound = null;
+        let nextSlot = Math.ceil(m.bracket_slot / 2);
+        let side = m.bracket_slot % 2 === 1 ? 'home_team_id' : 'away_team_id';
+
+        if (m.stage === 'r32') nextRound = 'r16';
+        else if (m.stage === 'r16') nextRound = 'qf';
+        else if (m.stage === 'qf') nextRound = 'sf';
+        else if (m.stage === 'sf') {
+          // Semi-final: Winner to Final, Loser to 3rd Place
+          await update('matches', { knockout_round: 'final', bracket_slot: 1 }, { $set: { [side]: winnerId } });
+          await update('matches', { knockout_round: 'third', bracket_slot: 1 }, { $set: { [side]: loserId } });
+        }
+
+        if (nextRound) {
+          await update('matches', { knockout_round: nextRound, bracket_slot: nextSlot }, { $set: { [side]: winnerId } });
+        }
+      }
+    }
+
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });

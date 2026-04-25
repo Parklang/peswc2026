@@ -53,6 +53,7 @@ router.post('/draw', async (req, res) => {
     const baseDate = new Date('2026-07-01');
     const result = [];
 
+    // Round of 32
     for (let i = 0; i < 16; i++) {
       const home = allTeams[i*2], away = allTeams[i*2+1];
       if (!home || !away) continue;
@@ -67,6 +68,62 @@ router.post('/draw', async (req, res) => {
       });
       result.push({ slot: i+1, home: home.name, away: away.name });
     }
+
+    // Round of 16
+    for (let i = 0; i < 8; i++) {
+      const d = new Date(baseDate);
+      d.setDate(baseDate.getDate() + 5 + Math.floor(i/4));
+      await insert('matches', {
+        home_team_id: null, away_team_id: null,
+        stage: 'r16', match_date: d.toISOString().split('T')[0], venue_id: venues[(i+4) % venues.length]?._id,
+        status: 'scheduled', knockout_round: 'r16', bracket_slot: i+1,
+        group_id: null, home_score: null, away_score: null, home_penalties: null, away_penalties: null
+      });
+    }
+
+    // Quarter-finals
+    for (let i = 0; i < 4; i++) {
+      const d = new Date(baseDate);
+      d.setDate(baseDate.getDate() + 9 + Math.floor(i/2));
+      await insert('matches', {
+        home_team_id: null, away_team_id: null,
+        stage: 'qf', match_date: d.toISOString().split('T')[0], venue_id: venues[(i+2) % venues.length]?._id,
+        status: 'scheduled', knockout_round: 'qf', bracket_slot: i+1,
+        group_id: null, home_score: null, away_score: null, home_penalties: null, away_penalties: null
+      });
+    }
+
+    // Semi-finals
+    for (let i = 0; i < 2; i++) {
+      const d = new Date(baseDate);
+      d.setDate(baseDate.getDate() + 13 + i);
+      await insert('matches', {
+        home_team_id: null, away_team_id: null,
+        stage: 'sf', match_date: d.toISOString().split('T')[0], venue_id: venues[i % venues.length]?._id,
+        status: 'scheduled', knockout_round: 'sf', bracket_slot: i+1,
+        group_id: null, home_score: null, away_score: null, home_penalties: null, away_penalties: null
+      });
+    }
+
+    // Final
+    const finalDate = new Date(baseDate);
+    finalDate.setDate(baseDate.getDate() + 18);
+    await insert('matches', {
+      home_team_id: null, away_team_id: null,
+      stage: 'final', match_date: finalDate.toISOString().split('T')[0], venue_id: venues[0]?._id,
+      status: 'scheduled', knockout_round: 'final', bracket_slot: 1,
+      group_id: null, home_score: null, away_score: null, home_penalties: null, away_penalties: null
+    });
+
+    // Third place
+    const thirdDate = new Date(baseDate);
+    thirdDate.setDate(baseDate.getDate() + 17);
+    await insert('matches', {
+      home_team_id: null, away_team_id: null,
+      stage: 'third', match_date: thirdDate.toISOString().split('T')[0], venue_id: venues[1]?._id,
+      status: 'scheduled', knockout_round: 'third', bracket_slot: 1,
+      group_id: null, home_score: null, away_score: null, home_penalties: null, away_penalties: null
+    });
 
     res.json({ success: true, matches: result });
   } catch(e) { res.status(500).json({ error: e.message }); }
