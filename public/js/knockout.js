@@ -86,7 +86,7 @@ async function renderBracket() {
     byRound[r].push(m);
   });
 
-  const rounds = roundOrder.filter(r => byRound[r]);
+  const rounds = roundOrder; // Show all rounds
 
   el.innerHTML = `
     <div class="card">
@@ -97,7 +97,7 @@ async function renderBracket() {
             <div class="bracket-round">
               <div class="bracket-round-title">${roundNames[r] || r.toUpperCase()}</div>
               <div class="bracket-matches">
-                ${byRound[r].map(m => bracketMatchHTML(m)).join('<div class="bracket-spacer"></div>')}
+                ${(byRound[r] || []).map(m => bracketMatchHTML(m)).join('')}
               </div>
             </div>
           `).join('')}
